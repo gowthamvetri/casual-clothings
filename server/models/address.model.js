@@ -35,7 +35,6 @@ const addressSchema = mongoose.Schema({
     },
     addIframe : {
         type: String,
-        required: true,
         default: ""
     }
 },{

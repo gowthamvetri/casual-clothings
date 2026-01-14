@@ -28,6 +28,21 @@ const errorHandler = (err, req, res, next) => {
   } else if (err.code === 11000) {
     status = 400;
     message = 'Duplicate key error';
+  } else if (err.name === 'MulterError') {
+    // Handle Multer-specific errors
+    status = 400;
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      message = 'File size too large. Maximum size is 5MB.';
+    } else if (err.code === 'LIMIT_FILE_COUNT') {
+      message = 'Too many files uploaded.';
+    } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      message = 'Unexpected file field.';
+    } else {
+      message = 'File upload error: ' + err.message;
+    }
+  } else if (err.message && err.message.includes('Invalid file type')) {
+    status = 400;
+    message = err.message;
   }
 
   const errorResponse = {

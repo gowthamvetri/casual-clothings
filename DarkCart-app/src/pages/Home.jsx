@@ -42,7 +42,7 @@ function Home() {
         </div>
 
         {/* Category Section - Premium Grid with horizontal scroll on mobile */}
-        <div className="md:grid md:grid-cols-3 lg:grid-cols-5 gap-6 sm:gap-8 md:gap-10 px-1 sm:px-2 md:px-8 flex md:block overflow-x-auto md:overflow-visible space-x-4 md:space-x-0 pb-2 md:pb-0 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+        <div className="md:grid md:grid-cols-3 lg:grid-cols-5 gap-6 sm:gap-8 md:gap-10 px-1 sm:px-2 md:px-8 flex md:flex-none overflow-x-auto md:overflow-visible space-x-4 md:space-x-0 pb-2 md:pb-0 scrollbar-hide" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
           {/* Hide scrollbar for Webkit browsers */}
           <style>{`
             .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -52,10 +52,10 @@ function Home() {
                 return (
                   <div
                     key={index + "loadingcategory"}
-                    className="bg-white border border-gray-200 p-4 sm:p-5 h-32 sm:h-36 md:h-44 grid gap-2 shadow-sm animate-pulse min-w-[220px] md:min-w-0 flex-shrink-0"
+                    className="bg-white border border-gray-100 p-4 sm:p-5 h-32 sm:h-36 md:h-44 grid gap-3 shadow-sm rounded-lg overflow-hidden min-w-[220px] md:min-w-0 flex-shrink-0 animate-pulse"
                   >
-                    <div className="bg-gray-100 h-4/5"></div>
-                    <div className="bg-gray-100 h-4"></div>
+                    <div className="bg-gray-200 h-4/5 rounded"></div>
+                    <div className="bg-gray-200 h-5 rounded w-3/4 mx-auto"></div>
                   </div>
                 );
               })

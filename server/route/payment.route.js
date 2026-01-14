@@ -10,10 +10,30 @@ import {
     getPaymentSettings, 
     updatePaymentSettings 
 } from '../controllers/payment.controller.js';
+import { 
+    handleRazorpayWebhook, 
+    verifyPayment,
+    createRazorpayOrder 
+} from '../controllers/razorpayWebhook.controller.js';
+import { getPaymentConfig } from '../controllers/paymentConfig.controller.js';
 import auth from '../middleware/auth.js';
 import { admin } from '../middleware/Admin.js';
+import { paymentLimiter } from '../middleware/rateLimitMiddleware.js';
 
 const paymentRouter = express.Router();
+
+// Get payment configuration (frontend needs this for Razorpay key)
+paymentRouter.get('/config', getPaymentConfig);
+
+// Razorpay webhook endpoint (MUST be before other routes, NO AUTH)
+// This endpoint receives payment confirmations from Razorpay servers
+paymentRouter.post('/razorpay/webhook', handleRazorpayWebhook);
+
+// Create Razorpay order (called by frontend before payment)
+paymentRouter.post('/razorpay/create-order', auth, paymentLimiter, createRazorpayOrder);
+
+// Manual payment verification endpoint (called by frontend after payment)
+paymentRouter.post('/razorpay/verify', auth, paymentLimiter, verifyPayment);
 
 // Get all payments with filters (Admin only)
 paymentRouter.post('/all', auth, admin, getAllPayments);

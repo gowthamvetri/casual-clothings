@@ -69,7 +69,9 @@ const getProductProperty = (item, propertyPath, fallback = "") => {
 const PaymentPage = () => {
   const { fetchCartItems, handleOrder } = useGlobalContext();
   const cartItemsList = useSelector((state) => state.cartItem.cart);
-  const addressList = useSelector((state) => state.addresses.addressList);
+  // REMOVED: const addressList = useSelector((state) => state.addresses.addressList);
+  // We do NOT use Redux addressList - only use address passed from AddressPage
+  const user = useSelector((state) => state.user);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -87,6 +89,10 @@ const PaymentPage = () => {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('online'); // Default to online payment
   const [isProcessing, setIsProcessing] = useState(false);
   const [deliveryDates, setDeliveryDates] = useState([]);
+  const [paymentConfig, setPaymentConfig] = useState(null); // Store payment config (live/test mode)
+  
+  // Preserve the original location.state to prevent loss on re-render
+  const [preservedLocationState, setPreservedLocationState] = useState(null);
 
   // Helper function to map payment method codes to backend-expected names
   const getPaymentMethodName = (methodCode) => {
@@ -188,29 +194,107 @@ const PaymentPage = () => {
   const totalPrice = selectedTotals.totalPrice;
   const notDiscountTotalPrice = selectedTotals.totalOriginalPrice;
 
-  // Get data from location state or redirect to address page
+  // Fetch payment configuration on mount
   useEffect(() => {
-    if (location.state?.selectedAddressId && location.state?.deliveryCharge !== undefined) {
-      setSelectedAddressId(location.state.selectedAddressId);
-      setDeliveryCharge(location.state.deliveryCharge);
-      setDeliveryDistance(location.state.deliveryDistance || 0);
-      setEstimatedDeliveryDate(location.state.estimatedDeliveryDate || '');
-      setDeliveryDays(location.state.deliveryDays || 0);
-    } else {
-      // If no address is selected, redirect to address page
-      navigate('/checkout/address');
-    }
-  }, [location, navigate]);
+    const fetchPaymentConfig = async () => {
+      try {
+        const response = await Axios({
+          ...SummaryApi.getPaymentConfig
+        });
+        
+        if (response.data.success) {
+          setPaymentConfig(response.data.data);
+          if (response.data.data.isLiveMode) {
+            console.log('💳 Payment mode: LIVE (Real transactions)');
+          } else {
+            console.log('💳 Payment mode: TEST');
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch payment config:', error);
+        // Don't block user, just log the error
+      }
+    };
+    
+    fetchPaymentConfig();
+  }, []);
 
-  // Find selected address from addressList
+  // Get data from sessionStorage (primary) or location state (fallback)
+  // CRITICAL: Load and preserve address data ONCE
   useEffect(() => {
-    if (selectedAddressId && addressList.length) {
-      const address = addressList.find(addr => addr._id === selectedAddressId);
-      if (address) {
-        setSelectedAddress(address);
+    // Only process if we haven't preserved the state yet
+    if (preservedLocationState) {
+      return;
+    }
+    
+    // Try to get address data from sessionStorage first (most reliable)
+    let addressData = null;
+    const storedData = sessionStorage.getItem('checkoutAddressData');
+    
+    if (storedData) {
+      try {
+        addressData = JSON.parse(storedData);
+      } catch (e) {
+        // Silent fail - data will be null
       }
     }
-  }, [selectedAddressId, addressList]);
+    
+    // Fallback to location.state if sessionStorage doesn't have data
+    if (!addressData && location.state?.selectedAddressId) {
+      addressData = location.state;
+    }
+    
+    // Validate we have address data
+    if (!addressData?.selectedAddressId || addressData?.deliveryCharge === undefined) {
+      toast.error('Please select a delivery address');
+      navigate('/checkout/address', { replace: true });
+      return;
+    }
+    
+    // CRITICAL: Must have the full address object
+    if (!addressData.selectedAddress) {
+      toast.error('Address data incomplete. Please select again.');
+      navigate('/checkout/address', { replace: true });
+      return;
+    }
+    
+    // Verify the address ID matches
+    if (addressData.selectedAddress._id !== addressData.selectedAddressId) {
+      toast.error('Address data mismatch. Please select again.');
+      navigate('/checkout/address', { replace: true });
+      return;
+    }
+    
+    // Preserve the data
+    setPreservedLocationState(addressData);
+    
+    // Set all state variables with the address data
+    setSelectedAddressId(addressData.selectedAddressId);
+    setSelectedAddress(addressData.selectedAddress); // Use EXACT address
+    setDeliveryCharge(addressData.deliveryCharge);
+    setDeliveryDistance(addressData.deliveryDistance || 0);
+    setEstimatedDeliveryDate(addressData.estimatedDeliveryDate || '');
+    setDeliveryDays(addressData.deliveryDays || 0);
+  }, [location, navigate, preservedLocationState]);
+  
+  // WATCHDOG: Continuously verify address integrity
+  useEffect(() => {
+    if (selectedAddress && selectedAddressId) {
+      if (selectedAddress._id !== selectedAddressId) {
+        toast.error('Address verification failed. Redirecting...');
+        setTimeout(() => {
+          navigate('/checkout/address', { replace: true });
+        }, 2000);
+      }
+    }
+  }, [selectedAddress, selectedAddressId, navigate]);
+  
+  // Cleanup: Remove address data from sessionStorage when component unmounts
+  useEffect(() => {
+    return () => {
+      // Cleanup on unmount
+    };
+  }, []);
 
   // Set delivery dates for products using the estimated delivery date from AddressPage
   useEffect(() => {
@@ -283,6 +367,12 @@ const PaymentPage = () => {
       navigate('/checkout/address');
       return;
     }
+    
+    if (!selectedAddress) {
+      toast.error("Address details not found. Please select again.");
+      navigate('/checkout/address');
+      return;
+    }
 
     // Check if there are selected items to checkout
     if (checkoutItems.length === 0) {
@@ -349,55 +439,154 @@ const PaymentPage = () => {
         }
       });
 
+      // Prepare order data for backend
+      const orderPayload = {
+        list_items: preparedItems, // Send properly formatted items
+        totalAmount: totalPrice + deliveryCharge,
+        addressId: selectedAddressId,
+        subTotalAmt: totalPrice,
+        deliveryCharge: deliveryCharge,
+        deliveryDistance: deliveryDistance,
+        estimatedDeliveryDate: estimatedDeliveryDate,
+        deliveryDays: deliveryDays,
+        quantity: totalQty,
+        paymentMethod: getPaymentMethodName(selectedPaymentMethod), // Add payment method
+      };
+      
+      // Step 1: Create order in backend
       const response = await Axios({
         ...SummaryApi.onlinePaymentOrder,
-        data: {
-          list_items: preparedItems, // Send properly formatted items
-          totalAmount: totalPrice + deliveryCharge,
-          addressId: selectedAddressId,
-          subTotalAmt: totalPrice,
-          deliveryCharge: deliveryCharge,
-          deliveryDistance: deliveryDistance,
-          estimatedDeliveryDate: estimatedDeliveryDate,
-          deliveryDays: deliveryDays,
-          quantity: totalQty,
-          paymentMethod: getPaymentMethodName(selectedPaymentMethod), // Add payment method
-        },
+        data: orderPayload,
         timeout: 30000 // Add timeout to prevent hanging requests
       });
 
       const { data: responseData } = response;
 
-      // Dismiss the loading toast
+      if (!responseData.success) {
+        toast.dismiss("order-processing");
+        toast.error(responseData.message || "Failed to create order");
+        setIsProcessing(false);
+        return;
+      }
+
+      const orderData = responseData.data;
+      const ourOrderId = orderData.orderId;
+
+      console.log("Order created:", ourOrderId);
+
+      // Step 2: Create Razorpay order
+      const razorpayOrderResponse = await Axios({
+        ...SummaryApi.createRazorpayOrder,
+        data: {
+          amount: totalPrice + deliveryCharge,
+          currency: 'INR',
+          orderId: ourOrderId
+        }
+      });
+
+      if (!razorpayOrderResponse.data.success) {
+        toast.dismiss("order-processing");
+        toast.error("Failed to initialize payment gateway");
+        setIsProcessing(false);
+        return;
+      }
+
+      const razorpayOrderId = razorpayOrderResponse.data.data.id;
+
       toast.dismiss("order-processing");
 
-      if (responseData.success) {
-        toast.success("Order placed successfully");
-        
-        // Remove selected items from sessionStorage
-        sessionStorage.removeItem('selectedCartItems');
-        
-        // Refresh cart to reflect changes after a brief delay to ensure backend processing is complete
-        setTimeout(() => {
-          fetchCartItems();
-        }, 1000);
-        
-        handleOrder();
-        navigate("/order-success", {
-          state: {
-            text: "Order",
-            orderDetails: {
-              estimatedDeliveryDate: estimatedDeliveryDate,
-              deliveryDays: deliveryDays,
-              deliveryDistance: deliveryDistance,
-              totalAmount: totalPrice + deliveryCharge,
-              itemCount: totalQty
+      // Step 3: Open Razorpay checkout
+      const options = {
+        key: paymentConfig?.razorpayKeyId || import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: (totalPrice + deliveryCharge) * 100, // Amount in paise
+        currency: 'INR',
+        name: 'Casual Clothings',
+        description: `Order #${ourOrderId}`,
+        order_id: razorpayOrderId,
+        handler: async function (response) {
+          try {
+            toast.loading("Verifying payment...", { id: "payment-verify" });
+
+            // Verify payment
+            const verifyResponse = await Axios({
+              ...SummaryApi.verifyRazorpayPayment,
+              data: {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                orderId: ourOrderId
+              }
+            });
+
+            toast.dismiss("payment-verify");
+
+            if (verifyResponse.data.success) {
+              toast.success("Payment successful!");
+              
+              // Remove selected items and address data from sessionStorage
+              sessionStorage.removeItem('selectedCartItems');
+              sessionStorage.removeItem('selectedCartItemsData');
+              sessionStorage.removeItem('checkoutAddressData');
+              
+              // Refresh cart
+              setTimeout(() => {
+                fetchCartItems();
+              }, 1000);
+              
+              handleOrder();
+              navigate("/order-success", {
+                state: {
+                  text: "Order",
+                  orderDetails: {
+                    estimatedDeliveryDate: estimatedDeliveryDate,
+                    deliveryDays: deliveryDays,
+                    deliveryDistance: deliveryDistance,
+                    totalAmount: totalPrice + deliveryCharge,
+                    itemCount: totalQty
+                  }
+                },
+              });
+            } else {
+              toast.error("Payment verification failed");
             }
-          },
-        });
-      } else {
-        toast.error(responseData.message || "Failed to place order");
-      }
+          } catch (verifyError) {
+            console.error("Payment verification error:", verifyError);
+            toast.dismiss("payment-verify");
+            toast.error("Payment verification failed. Please contact support.");
+          } finally {
+            setIsProcessing(false);
+          }
+        },
+        prefill: {
+          name: selectedAddress?.name || user?.name || '',
+          email: user?.email || '',
+          contact: selectedAddress?.mobile || user?.mobile || ''
+        },
+        notes: {
+          orderId: ourOrderId
+        },
+        theme: {
+          color: '#000000'
+        },
+        modal: {
+          ondismiss: function() {
+            toast.dismiss("order-processing");
+            toast.error("Payment cancelled");
+            setIsProcessing(false);
+          }
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      
+      rzp.on('payment.failed', function (response) {
+        console.error("Payment failed:", response.error);
+        toast.error(`Payment failed: ${response.error.description}`);
+        setIsProcessing(false);
+      });
+      
+      rzp.open();
+
     } catch (error) {
       console.error("Order placement error:", error);
       toast.dismiss("order-processing");
@@ -417,7 +606,7 @@ const PaymentPage = () => {
           toast.error("Failed to place order. Please try again.");
         }
       }, 300);
-    } finally {
+      
       setIsProcessing(false);
     }
   };
@@ -458,7 +647,20 @@ const PaymentPage = () => {
             {/* Payment Methods Section */}
             <div className="bg-white rounded-lg shadow-md mb-6">
               <div className="p-4 sm:p-5 border-b">
-                <h2 className="text-base sm:text-lg font-medium tracking-tight uppercase">Select Payment Method</h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-base sm:text-lg font-medium tracking-tight uppercase">Select Payment Method</h2>
+                  {paymentConfig && paymentConfig.isLiveMode && (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                      <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+                      LIVE MODE
+                    </span>
+                  )}
+                  {paymentConfig && !paymentConfig.isLiveMode && (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+                      TEST MODE
+                    </span>
+                  )}
+                </div>
               </div>
               
               <div className="p-4 sm:p-5">
@@ -520,8 +722,23 @@ const PaymentPage = () => {
               <div className="bg-white rounded-lg shadow-md mb-6">
                 <div className="p-4 sm:p-5 border-b">
                   <h2 className="text-base sm:text-lg font-medium tracking-tight uppercase">Delivery Address</h2>
+                  {selectedAddress._id !== selectedAddressId && (
+                    <div className="mt-2 p-3 bg-red-100 border-2 border-red-500 text-red-800 text-sm rounded font-semibold">
+                      🚨 CRITICAL ERROR: Address ID mismatch!
+                      <button 
+                        onClick={() => navigate('/checkout/address')} 
+                        className="mt-2 ml-3 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                      >
+                        Go Back
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="p-4 sm:p-5">
+                  {/* Confirmation badge */}
+                  <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-800">
+                    ✓ Confirmed delivery address
+                  </div>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">

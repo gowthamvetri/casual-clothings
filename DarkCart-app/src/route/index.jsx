@@ -1,66 +1,94 @@
 import { createBrowserRouter } from "react-router-dom";
+import { lazy, Suspense } from "react";
 import App from "../App";
-import Home from "../pages/Home";
-import SearchPage from "../pages/SearchPage";
-import About from "../pages/About";
-import Blog from "../pages/Blog";
-import SizeGuide from "../pages/SizeGuide"; 
-import FAQ from "../pages/FAQ";
-import ShippingReturns from "../pages/ShippingReturns";
-import PrivacyPolicy from "../pages/PrivacyPolicy";
-import TermsConditions from "../pages/TermsConditions";
-import Lookbook from "../pages/Lookbook";
-import Sustainability from "../pages/Sustainability";
-import Login from "../pages/Login";
-import Register from "../pages/Register";
-import ForgotPassword from "../pages/ForgotPassword";
-import OtpVerify from "../pages/OtpVerify";
-import ResetPassword from "../pages/ResetPassword";
-import UserMenuMobile from "../pages/UserMenuMobile";
-import Dashboard from "../layout/Dashboard";
-import Profile from "../pages/Profile";
-import MyOrders from "../pages/MyOrders";
-// import MyRefunds from "../pages/MyRefunds";
-import UserRefundManagement from "../pages/UserRefundManagement";
-import ReturnProduct from "../pages/ReturnProduct";
-import Address from "../pages/Address";
-import WishlistPage from "../pages/WishlistPage";
-import CategoryPage from "../pages/CategoryPage";
-import UploadProduct from "../pages/UploadProduct";
-import ProductAdmin from "../pages/ProductAdmin";
-import AdminOrderDashboard from "../pages/AdminOrderDashboard";
-import ProductListPage from "../pages/ProductListPage";
-import ProductDisplayPage from "../pages/ProductDisplayPage";
-import CartMobile from "../pages/CartMobile";
-import CheckoutPage from "../pages/CheckoutPage";
-import BagPage from "../pages/BagPage";
-import AddressPage from "../pages/AddressPage";
-import PaymentPage from "../pages/PaymentPage";
-import Success from "../pages/Success";
-import Cancel from "../pages/Cancel";
-import OrderSuccessPage from "../pages/OrderSuccessPage";
-import PageNotFound from "../pages/PageNotFound"; // Add this import
-import AdminPermission from "../layout/AdminPermission";
-import DeliveryChargeCalculator from "../pages/test";
-import BundleOffers from "../pages/BundleOffers";
-import BundleDetail from "../pages/BundleDetail";
 
-import BundleAdmin from "../pages/BundleAdmin";
-import AdminDashboard from "../pages/AdminDashboard";
-import UserManagement from "../pages/UserManagement";
-import PaymentManagement from "../pages/PaymentManagement";
-import CancellationManagementPage from "../pages/CancellationManagementPage";
-import AdminReturnManagement from "../pages/AdminReturnManagement";
-import CustomTshirtRequest from "../pages/CustomTshirtRequest";
-import MyCustomTshirts from "../pages/MyCustomTshirts";
-import CustomTshirtRequestsAdmin from "../pages/CustomTshirtRequestsAdmin";
-import StockManagementPage from "../pages/StockManagementPage";
-import CancellationPolicyPage from "../pages/CancellationPolicyPage";
-import RefundManagementPage from "../pages/RefundManagementPage";
-import InventoryManagement from "../pages/InventoryManagement";
-import Sitemap from "../pages/Sitemap";
-import AdminContactManagement from "../pages/AdminContactManagement";
-import UserContactHistory from "../pages/UserContactHistory";
+// Loading component for Suspense fallback
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-white">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+  </div>
+);
+
+// Lazy load all pages - Code Splitting Implementation
+// Core pages (load immediately for better UX)
+const Home = lazy(() => import("../pages/Home"));
+const SearchPage = lazy(() => import("../pages/SearchPage"));
+const ProductListPage = lazy(() => import("../pages/ProductListPage"));
+const ProductDisplayPage = lazy(() => import("../pages/ProductDisplayPage"));
+
+// Auth pages
+const Login = lazy(() => import("../pages/Login"));
+const Register = lazy(() => import("../pages/Register"));
+const ForgotPassword = lazy(() => import("../pages/ForgotPassword"));
+const OtpVerify = lazy(() => import("../pages/OtpVerify"));
+const ResetPassword = lazy(() => import("../pages/ResetPassword"));
+
+// Info pages
+const About = lazy(() => import("../pages/About"));
+const Blog = lazy(() => import("../pages/Blog"));
+const SizeGuide = lazy(() => import("../pages/SizeGuide"));
+const FAQ = lazy(() => import("../pages/FAQ"));
+const ShippingReturns = lazy(() => import("../pages/ShippingReturns"));
+const PrivacyPolicy = lazy(() => import("../pages/PrivacyPolicy"));
+const TermsConditions = lazy(() => import("../pages/TermsConditions"));
+const Lookbook = lazy(() => import("../pages/Lookbook"));
+const Sustainability = lazy(() => import("../pages/Sustainability"));
+const Sitemap = lazy(() => import("../pages/Sitemap"));
+const Contact = lazy(() => import("../components/Contact"));
+
+// Dashboard & User pages
+const Dashboard = lazy(() => import("../layout/Dashboard"));
+const Profile = lazy(() => import("../pages/Profile"));
+const MyOrders = lazy(() => import("../pages/MyOrders"));
+const UserRefundManagement = lazy(() => import("../pages/UserRefundManagement"));
+const ReturnProduct = lazy(() => import("../pages/ReturnProduct"));
+const Address = lazy(() => import("../pages/Address"));
+const WishlistPage = lazy(() => import("../pages/WishlistPage"));
+const MyCustomTshirts = lazy(() => import("../pages/MyCustomTshirts"));
+const UserContactHistory = lazy(() => import("../pages/UserContactHistory"));
+
+// Cart & Checkout pages
+const CartMobile = lazy(() => import("../pages/CartMobile"));
+const BagPage = lazy(() => import("../pages/BagPage"));
+const AddressPage = lazy(() => import("../pages/AddressPage"));
+const PaymentPage = lazy(() => import("../pages/PaymentPage"));
+const CheckoutPage = lazy(() => import("../pages/CheckoutPage"));
+const Success = lazy(() => import("../pages/Success"));
+const Cancel = lazy(() => import("../pages/Cancel"));
+const OrderSuccessPage = lazy(() => import("../pages/OrderSuccessPage"));
+
+// Admin pages
+const AdminPermission = lazy(() => import("../layout/AdminPermission"));
+const AdminDashboard = lazy(() => import("../pages/AdminDashboard"));
+const CategoryPage = lazy(() => import("../pages/CategoryPage"));
+const UploadProduct = lazy(() => import("../pages/UploadProduct"));
+const ProductAdmin = lazy(() => import("../pages/ProductAdmin"));
+const BundleAdmin = lazy(() => import("../pages/BundleAdmin"));
+const AdminOrderDashboard = lazy(() => import("../pages/AdminOrderDashboard"));
+const UserManagement = lazy(() => import("../pages/UserManagement"));
+const PaymentManagement = lazy(() => import("../pages/PaymentManagement"));
+const CancellationManagementPage = lazy(() => import("../pages/CancellationManagementPage"));
+const AdminReturnManagement = lazy(() => import("../pages/AdminReturnManagement"));
+const CustomTshirtRequestsAdmin = lazy(() => import("../pages/CustomTshirtRequestsAdmin"));
+const StockManagementPage = lazy(() => import("../pages/StockManagementPage"));
+const CancellationPolicyPage = lazy(() => import("../pages/CancellationPolicyPage"));
+const RefundManagementPage = lazy(() => import("../pages/RefundManagementPage"));
+const InventoryManagement = lazy(() => import("../pages/InventoryManagement"));
+const AdminContactManagement = lazy(() => import("../pages/AdminContactManagement"));
+
+// Other pages
+const BundleOffers = lazy(() => import("../pages/BundleOffers"));
+const BundleDetail = lazy(() => import("../pages/BundleDetail"));
+const CustomTshirtRequest = lazy(() => import("../pages/CustomTshirtRequest"));
+const DeliveryChargeCalculator = lazy(() => import("../pages/test"));
+const PageNotFound = lazy(() => import("../pages/PageNotFound"));
+
+// Wrapper for lazy loaded components with Suspense
+const LazyLoad = ({ children }) => (
+  <Suspense fallback={<PageLoader />}>
+    {children}
+  </Suspense>
+);
 
 const router = createBrowserRouter([
     {
@@ -69,126 +97,121 @@ const router = createBrowserRouter([
         children: [
             {
                 path:"/",
-                element : <Home/>
+                element : <LazyLoad><Home/></LazyLoad>
             },
             {
                 path:"/search",
-                element : <SearchPage/>
+                element : <LazyLoad><SearchPage/></LazyLoad>
             },
             {
                 path:"/about",
-                element : <About/>
+                element : <LazyLoad><About/></LazyLoad>
             },
             {
                 path:"/blog",
-                element : <Blog/>
+                element : <LazyLoad><Blog/></LazyLoad>
             },
             {
                 path:"/size-guide",
-                element : <SizeGuide/>
+                element : <LazyLoad><SizeGuide/></LazyLoad>
             },
             {
                 path:"/faq",
-                element : <FAQ/>
+                element : <LazyLoad><FAQ/></LazyLoad>
             },
             {
                 path:"/shipping-returns",
-                element : <ShippingReturns/>
+                element : <LazyLoad><ShippingReturns/></LazyLoad>
             },
             {
                 path:"/privacy-policy",
-                element : <PrivacyPolicy/>
+                element : <LazyLoad><PrivacyPolicy/></LazyLoad>
             },
             {
                 path:"/terms-conditions",
-                element : <TermsConditions/>
+                element : <LazyLoad><TermsConditions/></LazyLoad>
             },
             {
                 path:"/sitemap",
-                element : <Sitemap/>
+                element : <LazyLoad><Sitemap/></LazyLoad>
             },
             {
                 path:"/lookbook",
-                element : <Lookbook/>
+                element : <LazyLoad><Lookbook/></LazyLoad>
             },
             {
                 path:"/sustainability",
-                element : <Sustainability/>
+                element : <LazyLoad><Sustainability/></LazyLoad>
+            },
+            {
+                path:"/contact",
+                element : <LazyLoad><Contact/></LazyLoad>
             },
             {
                 path:"/contact-history",
-                element : <UserContactHistory/>
+                element : <LazyLoad><UserContactHistory/></LazyLoad>
             },
             {
                 path:"/custom-tshirt",
-                element : <CustomTshirtRequest/>
+                element : <LazyLoad><CustomTshirtRequest/></LazyLoad>
             },
             {
                 path:"/return-product",
-                element : <ReturnProduct/>
+                element : <LazyLoad><ReturnProduct/></LazyLoad>
             },
             {
                 path:"/login",
-                element : <Login/>
+                element : <LazyLoad><Login/></LazyLoad>
             },{
                 path:"/register",
-                element : <Register/>
+                element : <LazyLoad><Register/></LazyLoad>
             },{
                 path:"/forget-password",
-                element : <ForgotPassword/>
+                element : <LazyLoad><ForgotPassword/></LazyLoad>
             },{
                 path:"/otp-verification",
-                element : <OtpVerify/>
+                element : <LazyLoad><OtpVerify/></LazyLoad>
             },{
                 path:"/reset-password",
-                element : <ResetPassword/>
+                element : <LazyLoad><ResetPassword/></LazyLoad>
             },
-            // {
-            //     path:"/user-menu-mobile",
-            //     element : <UserMenuMobile/>
-            // },
             {
                 path:"/dashboard",
-                element:<Dashboard/>,
+                element:<LazyLoad><Dashboard/></LazyLoad>,
                 children :[{
                     path:"profile",
-                    element:<Profile/>
+                    element:<LazyLoad><Profile/></LazyLoad>
                 },{
                     path:"myorders",
-                    element:<MyOrders/>
-                },
-                // {
-                //     path:"myrefunds",
-                //     element:<MyRefunds/>
-                // }
-                ,{
-                    path:"refund-dashboard", // User refund dashboard
-                    element:<UserRefundManagement/>
+                    element:<LazyLoad><MyOrders/></LazyLoad>
+                },{
+                    path:"refund-dashboard",
+                    element:<LazyLoad><UserRefundManagement/></LazyLoad>
                 },{
                     path:"return-product",
-                    element:<ReturnProduct/>
+                    element:<LazyLoad><ReturnProduct/></LazyLoad>
                 },{
                     path:"address",
-                    element:<Address/>
+                    element:<LazyLoad><Address/></LazyLoad>
                 },{
                     path:"wishlist",
-                    element:<WishlistPage/>
+                    element:<LazyLoad><WishlistPage/></LazyLoad>
                 },
                 {
                     path:"my-custom-tshirts",
-                    element:<MyCustomTshirts/>
+                    element:<LazyLoad><MyCustomTshirts/></LazyLoad>
                 },
                 {
                     path:"admin",
-                    element:<AdminPermission><AdminDashboard/></AdminPermission>
+                    element:<LazyLoad><AdminPermission><AdminDashboard/></AdminPermission></LazyLoad>
                 },
                 {
                     path:"category",
-                    element:<AdminPermission><CategoryPage/></AdminPermission>
+                    element:<LazyLoad><AdminPermission><CategoryPage/></AdminPermission></LazyLoad>
                 },
                 {
                     path:"upload-product",
-                    element:<AdminPermission><UploadProduct/></AdminPermission>,
+                    element:<LazyLoad><AdminPermission><UploadProduct/></AdminPermission></LazyLoad>,
                     errorElement: <div className="min-h-screen flex items-center justify-center bg-white p-4">
                         <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-md border border-gray-200">
                             <h2 className="text-xl font-semibold text-gray-800 mb-4">Error Loading Product Upload Page</h2>
@@ -215,124 +238,120 @@ const router = createBrowserRouter([
                 },
                 {
                     path:"product",
-                    element:<AdminPermission><ProductAdmin/></AdminPermission>
+                    element:<LazyLoad><AdminPermission><ProductAdmin/></AdminPermission></LazyLoad>
                 },
                 {
                     path:"bundle-admin",
-                    element:<AdminPermission><BundleAdmin/></AdminPermission>
+                    element:<LazyLoad><AdminPermission><BundleAdmin/></AdminPermission></LazyLoad>
                 },
                 {
                     path:"orders-admin",
-                    element:<AdminPermission><AdminOrderDashboard/></AdminPermission>
+                    element:<LazyLoad><AdminPermission><AdminOrderDashboard/></AdminPermission></LazyLoad>
                 },
                 {
                     path:"user-management",
-                    element:<AdminPermission><UserManagement/></AdminPermission>
+                    element:<LazyLoad><AdminPermission><UserManagement/></AdminPermission></LazyLoad>
                 },
                 {
                     path:"payment-management",
-                    element:<AdminPermission><PaymentManagement/></AdminPermission>
+                    element:<LazyLoad><AdminPermission><PaymentManagement/></AdminPermission></LazyLoad>
                 },
                 {
                     path:"cancellation-management",
-                    element:<AdminPermission><CancellationManagementPage/></AdminPermission>
+                    element:<LazyLoad><AdminPermission><CancellationManagementPage/></AdminPermission></LazyLoad>
                 },
                 {
                     path:"return-management",
-                    element:<AdminPermission><AdminReturnManagement/></AdminPermission>
+                    element:<LazyLoad><AdminPermission><AdminReturnManagement/></AdminPermission></LazyLoad>
                 },
                 {
                     path:"custom-tshirt-admin",
-                    element:<AdminPermission><CustomTshirtRequestsAdmin/></AdminPermission>
+                    element:<LazyLoad><AdminPermission><CustomTshirtRequestsAdmin/></AdminPermission></LazyLoad>
                 },
                 {
                     path:"cancellation-policy",
-                    element:<AdminPermission><CancellationPolicyPage/></AdminPermission>
+                    element:<LazyLoad><AdminPermission><CancellationPolicyPage/></AdminPermission></LazyLoad>
                 },
                 {
-                    path:"admin/refund-management", // Admin refund management
-                    element:<AdminPermission><RefundManagementPage/></AdminPermission>
+                    path:"admin/refund-management",
+                    element:<LazyLoad><AdminPermission><RefundManagementPage/></AdminPermission></LazyLoad>
                 },
                 {
                     path:"stock-management",
-                    element:<AdminPermission><StockManagementPage/></AdminPermission>
+                    element:<LazyLoad><AdminPermission><StockManagementPage/></AdminPermission></LazyLoad>
                 },
                 {
                     path:"inventory/:productId",
-                    element:<AdminPermission><InventoryManagement/></AdminPermission>
+                    element:<LazyLoad><AdminPermission><InventoryManagement/></AdminPermission></LazyLoad>
                 },
                 {
                     path:"inventory-management/:productId",
-                    element:<AdminPermission><InventoryManagement/></AdminPermission>
+                    element:<LazyLoad><AdminPermission><InventoryManagement/></AdminPermission></LazyLoad>
                 },
                 {
                     path:"contact-management",
-                    element:<AdminPermission><AdminContactManagement/></AdminPermission>
+                    element:<LazyLoad><AdminPermission><AdminContactManagement/></AdminPermission></LazyLoad>
                 },
-
-                // Add catch-all for dashboard subroutes
                 {
                     path:"*",
-                    element:<PageNotFound/>
+                    element:<LazyLoad><PageNotFound/></LazyLoad>
                 }
             ]
             },
             {
                 path:"category/:category",
-                element :<ProductListPage/>
+                element :<LazyLoad><ProductListPage/></LazyLoad>
             },{
                 path:"product/:product",
-                element :<ProductDisplayPage />
+                element :<LazyLoad><ProductDisplayPage /></LazyLoad>
             },
             {
                 path : 'cart',
-                element : <CartMobile/>
+                element : <LazyLoad><CartMobile/></LazyLoad>
             },
             {
                 path:"checkout/bag",
-                element: <BagPage/>
+                element: <LazyLoad><BagPage/></LazyLoad>
             },
             {
                 path:"checkout/address",
-                element: <AddressPage/>
+                element: <LazyLoad><AddressPage/></LazyLoad>
             },
             {
                 path:"checkout/payment",
-                element: <PaymentPage/>
+                element: <LazyLoad><PaymentPage/></LazyLoad>
             },
             {
                 path:"checkout",
-                element: <BagPage/>
+                element: <LazyLoad><BagPage/></LazyLoad>
             },
             {
                 path:"success",
-                element : <Success/>
+                element : <LazyLoad><Success/></LazyLoad>
             },
             {
                 path:"cancel",
-                element : <Cancel/>
+                element : <LazyLoad><Cancel/></LazyLoad>
             },
             {
                 path:"order-success",
-                element : <OrderSuccessPage/>
+                element : <LazyLoad><OrderSuccessPage/></LazyLoad>
             },
             {
                 path:"delivery-charge-calculator",
-                element : <DeliveryChargeCalculator/>
+                element : <LazyLoad><DeliveryChargeCalculator/></LazyLoad>
             },
             {
                 path:"bundle-offers",
-                element : <BundleOffers/>
+                element : <LazyLoad><BundleOffers/></LazyLoad>
             },
             {
                 path:"bundle/:bundleId",
-                element : <BundleDetail/>
+                element : <LazyLoad><BundleDetail/></LazyLoad>
             },
-          
-            // Add catch-all route for any invalid URLs - THIS MUST BE LAST
             {
                 path:"*",
-                element : <PageNotFound/>
+                element : <LazyLoad><PageNotFound/></LazyLoad>
             }
         ]
     }

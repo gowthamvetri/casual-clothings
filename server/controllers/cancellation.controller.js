@@ -145,16 +145,6 @@ export async function processCancellationRequest(req, res) {
         const { requestId, cancellationId, action, adminComments, adminResponse } = req.body;
         const adminId = req.userId;
 
-        // Debug logging
-        console.log("Received cancellation request data:", {
-            requestId,
-            cancellationId, 
-            action,
-            adminComments,
-            adminResponse,
-            adminId
-        });
-
         // Use requestId if provided, otherwise use cancellationId for backward compatibility
         const searchId = requestId || cancellationId;
         const responseText = adminComments || adminResponse;
@@ -419,7 +409,7 @@ export async function getAllCancellationRequests(req, res) {
         });
 
     } catch (error) {
-        console.error("Error in getAllCancellationRequests:", error);
+
         res.status(500).json({
             message: error.message || "Internal server error",
             error: true,
@@ -459,7 +449,7 @@ export async function getUserCancellationRequests(req, res) {
         });
 
     } catch (error) {
-        console.error("Error in getUserCancellationRequests:", error);
+
         res.status(500).json({
             message: error.message || "Internal server error",
             error: true,

@@ -13,7 +13,7 @@ const HomeBanner = () => {
           Stand out in modern minimalism. Premium quality. Designed for comfort & style. Bring luxury to the basics.
         </p>
         <a
-          href="/shop"
+          href="/search"
           className="inline-block bg-white text-black font-semibold px-6 py-3 rounded-full shadow-lg hover:bg-gray-100 transition-all duration-200"
         >
           SHOP NOW

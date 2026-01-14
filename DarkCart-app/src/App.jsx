@@ -15,6 +15,7 @@ import DisplayCartItem from './components/DisplayCartItem';
 import ScrollToTop from './components/ScrollToTop';
 import ScrollToTopButton from './components/ScrollToTopButton';
 import ErrorBoundary from './components/ErrorBoundary';
+import PWAUpdatePrompt from './components/PWAUpdatePrompt';
 
 function AppContent() {
   const { openCartSection, setOpenCartSection } = useGlobalContext();
@@ -31,6 +32,7 @@ function AppContent() {
       <Toaster/>
       <CartMobileLink/>
       <ScrollToTopButton/>
+      <PWAUpdatePrompt />
       {/* Cart Sidebar */}
       {openCartSection && user?._id && (
         <DisplayCartItem close={() => setOpenCartSection(false)} />

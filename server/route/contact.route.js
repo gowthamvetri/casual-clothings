@@ -10,11 +10,13 @@ import {
 } from '../controllers/contact.controller.js';
 import auth from '../middleware/auth.js';
 import { admin } from '../middleware/Admin.js';
+import { contactLimiter } from '../middleware/rateLimitMiddleware.js';
+import { validateContact } from '../middleware/validationMiddleware.js';
 
 const router = express.Router();
 
 // Public route for submitting contact forms
-router.post('/send', submitContactMessage);
+router.post('/send', contactLimiter, validateContact, submitContactMessage);
 
 // User route to get their own contact history
 router.get('/user', auth, getUserContactHistory);

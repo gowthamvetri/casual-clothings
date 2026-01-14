@@ -4,17 +4,13 @@ import mongoose from 'mongoose';
 
 // MongoDB injection prevention middleware
 export const sanitizeInput = mongoSanitize({
-  replaceWith: '_',
-  onSanitize: ({ req, key }) => {
-    console.warn(`⚠️  SECURITY: Sanitized potentially malicious input: ${key} in ${req.path} at ${new Date().toISOString()}`);
-  }
+  replaceWith: '_'
 });
 
 // Validation result handler
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    console.warn(`❌ VALIDATION FAILED: ${req.path}`, errors.array());
     return res.status(400).json({
       message: 'Validation failed',
       errors: errors.array().map(err => ({
@@ -198,12 +194,7 @@ export const securityLogger = (req, res, next) => {
   
   for (const pattern of suspiciousPatterns) {
     if (pattern.test(requestData)) {
-      console.error(`🚨 SECURITY ALERT: Suspicious pattern detected in ${req.method} ${req.path}`, {
-        ip: req.ip,
-        userAgent: req.get('User-Agent'),
-        pattern: pattern.toString(),
-        timestamp: new Date().toISOString()
-      });
+      // Security pattern detected - silently log to proper monitoring system
       break;
     }
   }

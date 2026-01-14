@@ -97,6 +97,25 @@ export const onlinePaymentOrderController = async (req, res) => {
     const userId = req.userId;
     const { list_items, totalAmount, addressId, subTotalAmt, quantity, paymentMethod, deliveryCharge, deliveryDistance, estimatedDeliveryDate, deliveryDays } = req.body;
 
+    // Debug: Log received order data including address
+    console.log('Order Controller: Received order request with address:', {
+      userId,
+      addressId,
+      totalAmount,
+      deliveryCharge,
+      itemCount: list_items?.length
+    });
+    
+    // Validate addressId
+    if (!addressId) {
+      console.error('Order Controller: addressId is missing from request');
+      return res.status(400).json({
+        success: false,
+        error: true,
+        message: "Delivery address is required"
+      });
+    }
+
     // Get user details for email
     const user = await UserModel.findById(userId);
     if (!user) {
@@ -554,13 +573,23 @@ export const onlinePaymentOrderController = async (req, res) => {
       deliveryDistance: deliveryDistance || 0,
       deliveryDays: deliveryDays || 0,
       deliveryCharge: deliveryCharge || 0, // Add deliveryCharge field
-      paymentStatus: "PAID", // Always PAID for online payments
+      paymentStatus: "PENDING", // Changed from "PAID" to "PENDING" - will be updated by Razorpay webhook
       paymentMethod: paymentMethod || "Online Payment",
       deliveryAddress: addressId,
       subTotalAmt: subTotalAmt,
       totalAmt: totalAmount,
-      orderStatus: "ORDER PLACED"
+      orderStatus: "PAYMENT PENDING" // Changed from "ORDER PLACED" - will be updated after payment confirmation
     };
+    
+    // Debug: Log order payload including address before creating order
+    console.log('Order Controller: Creating order with payload:', {
+      orderId: payload.orderId,
+      deliveryAddress: payload.deliveryAddress,
+      userId: payload.userId,
+      totalAmt: payload.totalAmt,
+      deliveryCharge: payload.deliveryCharge,
+      itemCount: processedItems.length
+    });
 
     console.log("Single Order Payload Created");
 
@@ -672,12 +701,17 @@ export const onlinePaymentOrderController = async (req, res) => {
 
         await sendEmail({
           sendTo: user.email,
-          subject: "Order Confirmation - Casual Clothing Fashion",
+          subject: "Order Received - Casual Clothing Fashion",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-              <h2 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">Order Confirmation</h2>
+              <h2 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">Order Received</h2>
               <p>Dear ${user.name},</p>
-              <p>Thank you for your order! Your order has been placed successfully.</p>
+              <p>Thank you for your order! We are processing your payment.</p>
+              
+              <div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #ffc107;">
+                <p style="margin: 0; color: #856404;"><strong>⏳ Payment Status:</strong> Payment confirmation pending</p>
+                <p style="margin: 5px 0 0 0; font-size: 14px; color: #856404;">You will receive a confirmation email once your payment is verified.</p>
+              </div>
               
               <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
                 <h3 style="margin-top: 0;">Order Details:</h3>

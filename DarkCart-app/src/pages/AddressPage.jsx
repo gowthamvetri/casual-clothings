@@ -226,11 +226,30 @@ const AddressPage = () => {
 
   // Keep local address list in sync with Redux
   useEffect(() => {
+    console.log('AddressPage: Syncing localAddressList with Redux:', {
+      reduxCount: reduxAddressList.length,
+      reduxAddresses: reduxAddressList.map(addr => ({
+        _id: addr._id,
+        address_line: addr.address_line,
+        city: addr.city
+      }))
+    });
     setLocalAddressList(reduxAddressList);
   }, [reduxAddressList]);
   
   // Use the local address list for rendering
   const addressList = localAddressList;
+  
+  // Debug: Log whenever addressList changes
+  useEffect(() => {
+    console.log('AddressPage: addressList updated:', {
+      count: addressList.length,
+      addresses: addressList.map(addr => ({
+        _id: addr._id,
+        address_line: addr.address_line
+      }))
+    });
+  }, [addressList]);
 
   // State for edit address functionality
   const [editAddressData, setEditAddressData] = useState(null);
@@ -620,15 +639,66 @@ const AddressPage = () => {
       return;
     }
     
+    // Get the selected address
+    const selectedAddr = addressList[selectedAddressIndex];
+    
+    // CRITICAL: Verify we have the correct address
+    if (!selectedAddr || !selectedAddr._id) {
+      console.error('AddressPage: Selected address is invalid!', selectedAddr);
+      toast.error('Invalid address. Please select again.');
+      return;
+    }
+    
+    // Create a clean copy of the address to pass (prevent any reference issues)
+    const cleanAddress = {
+      _id: selectedAddr._id,
+      address_line: selectedAddr.address_line,
+      city: selectedAddr.city,
+      state: selectedAddr.state,
+      pincode: selectedAddr.pincode,
+      mobile: selectedAddr.mobile,
+      country: selectedAddr.country,
+      addIframe: selectedAddr.addIframe,
+      addressType: selectedAddr.addressType,
+      userId: selectedAddr.userId
+    };
+    
+    // Debug: Log all address data being passed with full details
+    console.log('AddressPage: Navigating to payment with address data:', {
+      selectedAddressIndex,
+      selectedAddressId: cleanAddress._id,
+      selectedAddress: cleanAddress,
+      deliveryCharge: deliveryCharge,
+      deliveryDistance: deliveryDistance,
+      estimatedDeliveryDate: estimatedDeliveryDate,
+      deliveryDays: deliveryDays
+    });
+    
+    // Verify this is not a different address by checking against all addresses
+    console.log('AddressPage: All available addresses:', addressList.map(addr => ({
+      _id: addr._id,
+      address_line: addr.address_line,
+      city: addr.city
+    })));
+    
+    
+    // Store address data in sessionStorage as backup
+    const addressDataForPayment = {
+      selectedAddressId: cleanAddress._id,
+      selectedAddress: cleanAddress,
+      deliveryCharge: deliveryCharge,
+      deliveryDistance: deliveryDistance,
+      estimatedDeliveryDate: estimatedDeliveryDate,
+      deliveryDays: deliveryDays,
+      timestamp: new Date().getTime()
+    };
+    
+    sessionStorage.setItem('checkoutAddressData', JSON.stringify(addressDataForPayment));
+    
     // Continue to payment with the selected address and calculated delivery charge
     navigate('/checkout/payment', { 
-      state: { 
-        selectedAddressId: addressList[selectedAddressIndex]._id,
-        deliveryCharge: deliveryCharge, // Ensure we pass the calculated delivery charge
-        deliveryDistance: deliveryDistance,
-        estimatedDeliveryDate: estimatedDeliveryDate,
-        deliveryDays: deliveryDays
-      } 
+      replace: false,
+      state: addressDataForPayment
     });
   };
   console.log('checkoutItems:', checkoutItems);
@@ -693,6 +763,13 @@ const AddressPage = () => {
                             value={index}
                             checked={selectedAddressIndex === index}
                             onChange={() => {
+                              console.log('AddressPage: Address selected at index', index, ':', {
+                                _id: address._id,
+                                address_line: address.address_line,
+                                city: address.city,
+                                state: address.state,
+                                pincode: address.pincode
+                              });
                               setSelectedAddressIndex(index);
                               // Reset calculation status when new address is selected
                               setIsDeliveryCalculated(false);

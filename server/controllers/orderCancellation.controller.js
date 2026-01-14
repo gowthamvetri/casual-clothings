@@ -308,8 +308,12 @@ export const requestOrderCancellation = async (req, res) => {
         }
 
         // Validate order exists and belongs to user
+        // Support both MongoDB _id and custom orderId
         const order = await orderModel.findOne({ 
-            _id: orderId, 
+            $or: [
+                { _id: orderId },
+                { orderId: orderId }
+            ],
             userId: userId 
         });
 
@@ -336,20 +340,35 @@ export const requestOrderCancellation = async (req, res) => {
         // 1. Paid online orders (original case)
         // 2. Orders with partial refund processing (when some items were already cancelled)
         // 3. Orders with successful refund (when previous partial refunds were completed)
-        const allowedPaymentStatuses = ['PAID', 'PARTIAL_REFUND_PROCESSING', 'REFUND_SUCCESSFUL'];
+        // 4. Pending payment orders (payment not yet confirmed via webhook)
+        const allowedPaymentStatuses = ['PAID', 'PENDING', 'PARTIAL_REFUND_PROCESSING', 'REFUND_SUCCESSFUL'];
         
-        if (order.paymentMethod !== 'Online Payment' || !allowedPaymentStatuses.includes(order.paymentStatus)) {
+        // Log payment details for debugging
+        console.log('Payment validation:', {
+            paymentMethod: order.paymentMethod,
+            paymentStatus: order.paymentStatus,
+            allowedStatuses: allowedPaymentStatuses
+        });
+        
+        // Check if payment method is online (case-insensitive check)
+        const isOnlinePayment = order.paymentMethod && 
+            (order.paymentMethod.toLowerCase().includes('online') || 
+             order.paymentMethod.toLowerCase().includes('razorpay') ||
+             order.paymentMethod.toLowerCase().includes('card') ||
+             order.paymentMethod.toLowerCase().includes('upi'));
+        
+        if (!isOnlinePayment || !allowedPaymentStatuses.includes(order.paymentStatus)) {
             return res.status(400).json({
                 success: false,
                 error: true,
-                message: `Only paid online orders can be cancelled. Current status: ${order.paymentStatus}`
+                message: `Only paid online orders can be cancelled. Payment method: ${order.paymentMethod}, Status: ${order.paymentStatus}`
             });
         }
 
         // Check if cancellation request already exists with status PENDING
         // We only block if there's a PENDING request, allowing new requests after previous ones were APPROVED
         const existingPendingRequest = await orderCancellationModel.findOne({
-            orderId: orderId,
+            orderId: order._id, // Use the MongoDB _id from the found order
             status: 'PENDING'
         });
 

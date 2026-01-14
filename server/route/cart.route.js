@@ -10,16 +10,17 @@ import {
     batchRemoveCartItemsController,
     cleanCartController
 } from "../controllers/cart.controller.js";
+import { cartLimiter } from '../middleware/rateLimitMiddleware.js';
 
 const cartRouter = Router();
 
-cartRouter.post("/create",auth,addToCartItemController);
-cartRouter.post("/add-bundle",auth,addBundleToCartController);
-cartRouter.get("/get",auth,getCartItemController);
-cartRouter.put('/update-qty',auth,updateCartItemQtyController);
-cartRouter.delete('/delete-cart-item',auth,deleteCartItemQtyController);
-cartRouter.post('/validate',auth,validateCartItemsController);
-cartRouter.post('/batch-remove',auth,batchRemoveCartItemsController);
-cartRouter.post('/clean',auth,cleanCartController);
+cartRouter.post("/create", auth, cartLimiter, addToCartItemController);
+cartRouter.post("/add-bundle", auth, cartLimiter, addBundleToCartController);
+cartRouter.get("/get", auth, getCartItemController);
+cartRouter.put('/update-qty', auth, cartLimiter, updateCartItemQtyController);
+cartRouter.delete('/delete-cart-item', auth, cartLimiter, deleteCartItemQtyController);
+cartRouter.post('/validate', auth, validateCartItemsController);
+cartRouter.post('/batch-remove', auth, cartLimiter, batchRemoveCartItemsController);
+cartRouter.post('/clean', auth, cartLimiter, cleanCartController);
 
 export default cartRouter;

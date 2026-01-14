@@ -126,15 +126,10 @@ function PremiumCategoryWiseProductDisplay({ id, name }) {
                   key={"premiumCategoryLoading" + index}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
                   className="flex-shrink-0 w-36 sm:w-44 md:w-48 lg:w-52 xl:w-56"
                 >
-                  <div className="bg-white rounded shadow-sm p-1 md:p-2 h-[220px] sm:h-[240px] md:h-[260px] lg:h-[280px] flex flex-col">
-                    <div className="flex-grow">
-                      <CardLoading />
-                    </div>
-                    <div className="h-12 md:h-14 lg:h-16 bg-white animate-pulse rounded"></div>
-                  </div>
+                  <CardLoading />
                 </motion.div>
               ))}
 

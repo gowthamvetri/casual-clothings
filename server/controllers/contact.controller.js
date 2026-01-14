@@ -85,7 +85,6 @@ export const getAllContactMessages = async (req, res) => {
       data: messages
     });
   } catch (error) {
-    console.error('Get contact messages error:', error);
     return res.status(500).json({
       success: false,
       message: 'Failed to retrieve contact messages'
@@ -323,7 +322,6 @@ export const getUserContactHistory = async (req, res) => {
       data: messages
     });
   } catch (error) {
-    console.error('Get user contact history error:', error);
     return res.status(500).json({
       success: false,
       message: 'Failed to retrieve your contact history'

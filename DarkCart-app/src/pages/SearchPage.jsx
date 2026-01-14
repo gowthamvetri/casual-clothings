@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import CardLoading from "../components/CardLoading";
 import SummaryApi from "../common/SummaryApi";
 import Axios from "../utils/Axios";
@@ -67,22 +67,18 @@ function SearchPage() {
     // If there's an initial gender selected (coming from fashion category), hide the gender filter
     // If no initial gender, show the gender filter
     setShowGenderFilter(!initialGenderValue);
-    
-    console.log('Initial gender:', initialGenderValue);
-    console.log('Show gender filter:', !initialGenderValue);
   }, []); // Only run on mount
 
-  // Handle filter changes
-  const handleFilterChange = (filterType, value) => {
+  // Handle filter changes with useCallback for performance
+  const handleFilterChange = useCallback((filterType, value, secondValue = null) => {
     if (filterType === 'clear') {
       const newFilters = {
-        gender: initialGender, // Reset to initial gender, don't clear it if it was set initially
+        gender: initialGender,
         minPrice: '',
         maxPrice: ''
       };
       setFilters(newFilters);
       
-      // Update URL params - keep search query and initial gender
       const newParams = new URLSearchParams();
       if (searchText) {
         newParams.set('q', searchText);
@@ -94,28 +90,90 @@ function SearchPage() {
       return;
     }
 
+    if (filterType === 'priceRange') {
+      const newFilters = { 
+        ...filters, 
+        minPrice: value, 
+        maxPrice: secondValue 
+      };
+      setFilters(newFilters);
+      setPage(1);
+      setData([]);
+      
+      const newParams = new URLSearchParams();
+      if (searchText) {
+        newParams.set('q', searchText);
+      }
+      
+      Object.entries(newFilters).forEach(([key, val]) => {
+        if (val && val.toString().trim() !== '') {
+          newParams.set(key, val);
+        }
+      });
+      
+      setSearchParams(newParams);
+      return;
+    }
+
     const newFilters = { ...filters, [filterType]: value };
     setFilters(newFilters);
-    
-    // Reset pagination when filters change
     setPage(1);
     setData([]);
     
-    // Update URL params
     const newParams = new URLSearchParams();
     if (searchText) {
       newParams.set('q', searchText);
     }
     
     Object.entries(newFilters).forEach(([key, val]) => {
-      if (val && val.trim() !== '') {
+      if (val && val.toString().trim() !== '') {
         newParams.set(key, val);
       }
     });
     
-    console.log('Setting search params:', newParams.toString());
     setSearchParams(newParams);
-  };
+  }, [filters, searchText, initialGender, setSearchParams]);
+
+  // Memoize filter function to prevent recalculation
+  const filterProducts = useCallback((products) => {
+    if (!filters.minPrice && !filters.maxPrice) return products;
+    
+    return products.filter(product => {
+      const discountedPrice = product.discount > 0 
+        ? product.price - (product.price * product.discount / 100)
+        : product.price;
+      
+      if (filters.minPrice && discountedPrice < parseFloat(filters.minPrice)) return false;
+      if (filters.maxPrice && discountedPrice > parseFloat(filters.maxPrice)) return false;
+      
+      return true;
+    });
+  }, [filters.minPrice, filters.maxPrice]);
+
+  // Memoize sort function
+  const sortProducts = useCallback((products, searchQuery) => {
+    if (!searchQuery || searchQuery.length !== 1) return products;
+    
+    return [...products].sort((a, b) => {
+      const aName = a.name.toLowerCase();
+      const bName = b.name.toLowerCase();
+      const queryChar = searchQuery.toLowerCase();
+      
+      const aHasChar = aName.includes(queryChar);
+      const bHasChar = bName.includes(queryChar);
+      
+      if (aHasChar && !bHasChar) return -1;
+      if (!aHasChar && bHasChar) return 1;
+      
+      const aStartsWith = aName.startsWith(queryChar);
+      const bStartsWith = bName.startsWith(queryChar);
+      
+      if (aStartsWith && !bStartsWith) return -1;
+      if (!aStartsWith && bStartsWith) return 1;
+      
+      return aName.localeCompare(bName);
+    });
+  }, []);
 
   const fetchData = useCallback(
     async (pageNumber = 1, resetData = false) => {
@@ -134,67 +192,23 @@ function SearchPage() {
           requestData.gender = filters.gender;
         }
 
-        console.log('Search request data:', requestData);
-        console.log('Current searchText:', searchText);
-        console.log('Current filters:', filters);
-
         const response = await Axios({
           ...SummaryApi.searchProduct,
           data: requestData,
         });
 
         const { data: responseData } = response;
-        console.log("API Response:", responseData);
 
         if (responseData.success) {
           setTotalPage(responseData.totalNoPage);
 
           let processedData = responseData.data || [];
 
-          // Apply frontend price filters
-          if (filters.minPrice || filters.maxPrice) {
-            const originalCount = processedData.length;
-            processedData = processedData.filter(product => {
-              const discountedPrice = product.discount > 0 
-                ? product.price - (product.price * product.discount / 100)
-                : product.price;
-              
-              // Price filter
-              if (filters.minPrice && discountedPrice < parseFloat(filters.minPrice)) return false;
-              if (filters.maxPrice && discountedPrice > parseFloat(filters.maxPrice)) return false;
-              
-              return true;
-            });
-            console.log(`Price filter applied: ${originalCount} -> ${processedData.length} products`);
-          }
+          // Apply frontend price filters using memoized function
+          processedData = filterProducts(processedData);
 
-          // Sort results for single character searches
-          if (searchText && searchText.length === 1) {
-            processedData.sort((a, b) => {
-              const aName = a.name.toLowerCase();
-              const bName = b.name.toLowerCase();
-              const queryChar = searchText.toLowerCase();
-              
-              const aHasChar = aName.includes(queryChar);
-              const bHasChar = bName.includes(queryChar);
-              
-              if (aHasChar && !bHasChar) return -1;
-              if (!aHasChar && bHasChar) return 1;
-              
-              const aWords = aName.split(/\s+/);
-              const bWords = bName.split(/\s+/);
-              const aStartsWithQuery = aWords.some(word => word.startsWith(queryChar));
-              const bStartsWithQuery = bWords.some(word => word.startsWith(queryChar));
-              
-              if (aStartsWithQuery && !bStartsWithQuery) return -1;
-              if (!aStartsWithQuery && bStartsWithQuery) return 1;
-              
-              const aCount = (aName.match(new RegExp(queryChar, 'g')) || []).length;
-              const bCount = (bName.match(new RegExp(queryChar, 'g')) || []).length;
-              
-              return bCount - aCount;
-            });
-          }
+          // Sort results for single character searches using memoized function
+          processedData = sortProducts(processedData, searchText);
 
           if (pageNumber === 1 || resetData) {
             setData(processedData);
@@ -203,17 +217,15 @@ function SearchPage() {
           }
 
           setHasMore(pageNumber < responseData.totalNoPage);
-          console.log(`Page ${pageNumber} of ${responseData.totalNoPage} loaded`);
         }
       } catch (error) {
-        console.error('Search fetch error:', error);
         AxiosToastError(error);
         setHasMore(false);
       } finally {
         setLoading(false);
       }
     },
-    [searchText, filters]
+    [searchText, filters, filterProducts, sortProducts]
   );
 
   const handleMoreData = useCallback(() => {

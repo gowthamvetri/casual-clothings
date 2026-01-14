@@ -25,6 +25,9 @@ import configRouter from './route/config.route.js' // Import config routes for s
 import customTshirtRequestRouter from './route/customTshirtRequest.route.js' // Import custom t-shirt request routes
 import returnProductRouter from './route/returnProduct.route.js' // Import return product routes
 import indianLocationRouter from './route/indianLocation.route.js' // Import Indian location routes
+import errorHandler from './middleware/errorMiddleware.js' // Import error handler middleware
+import { requestIdMiddleware } from './middleware/requestIdMiddleware.js' // Import request ID middleware
+import { getCsrfToken } from './middleware/csrfMiddleware.js' // Import CSRF middleware
 
 
 
@@ -51,26 +54,27 @@ const corsOptions = {
         if (allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
-            console.log(`CORS blocked for origin: ${origin}`);
             callback(new Error('Not allowed by CORS'));
         }
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With'],
-    exposedHeaders: ['Content-Range', 'X-Content-Range'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With', 'X-CSRF-Token', 'X-XSRF-Token'],
+    exposedHeaders: ['Content-Range', 'X-Content-Range', 'X-CSRF-Token', 'X-Request-ID'],
     optionsSuccessStatus: 200 // Some legacy browsers choke on 204
 };
-
-// Log CORS configuration for debugging
-logCorsConfiguration(corsOptions);
 
 app.use(cors(corsOptions));
 
 // Handle preflight requests
 app.options('*', cors(corsOptions));
 
-app.use(express.json())
+// Request ID tracking (add early in middleware chain)
+app.use(requestIdMiddleware);
+
+// Body parser with increased limits for file uploads
+app.use(express.json({ limit: '10mb' }))
+app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 app.use(cookieParser())
 app.use(morgan())
 app.use(helmet({
@@ -87,6 +91,9 @@ app.get('/api/test-cors', (req, res) => {
         timestamp: new Date().toISOString()
     });
 });
+
+// CSRF token endpoint
+app.get('/api/csrf-token', getCsrfToken);
 
 app.get('/',(req,res)=>{
     res.json({
@@ -113,12 +120,26 @@ app.use('/api/custom-tshirt', customTshirtRequestRouter) // Use custom t-shirt r
 app.use('/api/return-product', returnProductRouter) // Use return product routes
 app.use('/api/location', indianLocationRouter) // Use Indian location routes
 
+// Error handling middleware (must be last)
+app.use(errorHandler)
 
 connectDB().then(
     ()=>{
         app.listen(PORT,()=>{
             console.log("Server is running");
             logServerInfo(); // Check environment variables on startup
+            
+            // Log Razorpay mode
+            const razorpayKeyId = process.env.RAZORPAY_KEY_ID;
+            if (razorpayKeyId) {
+                const isLiveMode = razorpayKeyId.startsWith('rzp_live_');
+                console.log(`💳 Razorpay: ${isLiveMode ? '🟢 LIVE MODE' : '🟡 TEST MODE'}`);
+                if (isLiveMode) {
+                    console.log('⚠️  Real transactions will be processed');
+                }
+            } else {
+                console.log('⚠️  Razorpay credentials not configured');
+            }
         })
     }
 );

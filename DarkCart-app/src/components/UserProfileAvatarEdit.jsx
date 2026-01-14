@@ -65,22 +65,50 @@ function UserProfileAvatarEdit({ close }) {
       return;
     }
 
+    // Validate file type on frontend
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Please upload a valid image file (JPEG, PNG, GIF, or WebP)');
+      return;
+    }
+
+    // Validate file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      alert('File size too large. Maximum size is 5MB.');
+      return;
+    }
+
     const formData = new FormData();
     formData.append("avatar", file);
 
+    let uploadResponse = null;
+
     try {
       setLoading(true);
-      const response = await Axios({
+      uploadResponse = await Axios({
         ...SummaryApi.uploadAvatar,
         data: formData,
       });
-      const { data: responseData } = response;
-      dispatch(updateAvatar(responseData.data.avatar));
+      
+      const { data: responseData } = uploadResponse;
+      
+      if (responseData.success && responseData.data?.avatar) {
+        dispatch(updateAvatar(responseData.data.avatar));
+        console.log('Avatar uploaded successfully:', responseData.data.avatar);
+        // Optionally close the modal after successful upload
+        setTimeout(() => {
+          close();
+        }, 1000);
+      }
     } catch (error) {
       AxiosTostError(error);
+      console.error('Upload error:', error);
     } finally {
       setLoading(false);
-      console.log(response);
+      if (uploadResponse) {
+        console.log('Upload response:', uploadResponse);
+      }
     }
   };
 

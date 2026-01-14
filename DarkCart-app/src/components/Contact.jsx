@@ -100,16 +100,12 @@ function Contact() {
     }, 300);
 
     try {
-      console.log("Attempting to send form data:", formData);
-      
       // Get token from localStorage - check both accessToken and token
       const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
       
       if (!token) {
         throw new Error('Authentication token not found. Please log in again.');
       }
-      
-      console.log("Using token for contact submission");
       
       const response = await axios({
         method: 'post',
@@ -124,7 +120,6 @@ function Contact() {
       });
       
       clearInterval(progressInterval);
-      console.log("Server response:", response);
       
       if (!response.data || response.status !== 200) {
         throw new Error(`Server returned ${response.status}: ${response.statusText || 'Failed to send message'}`);
@@ -172,8 +167,6 @@ function Contact() {
     } catch (error) {
       clearInterval(progressInterval);
       setSubmitProgress(0);
-      
-      console.error("Error sending contact message:", error);
       
       // Handle auth errors
       if (error.response && error.response.status === 401) {

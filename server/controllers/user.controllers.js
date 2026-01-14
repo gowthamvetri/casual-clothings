@@ -235,28 +235,101 @@ export async  function uploadAvatar(request,response){
       const userId = request.userId // auth middlware
       const image = request.file  // multer middleware
 
+      console.log('Upload avatar request:', {
+          userId,
+          file: image ? {
+              fieldname: image.fieldname,
+              originalname: image.originalname,
+              mimetype: image.mimetype,
+              size: image.size
+          } : 'No file'
+      });
+
+      if (!image) {
+          return response.status(400).json({
+              message: "No image file uploaded",
+              error: true,
+              success: false
+          });
+      }
+
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(image.mimetype)) {
+          return response.status(400).json({
+              message: "Invalid file type. Please upload a valid image file.",
+              error: true,
+              success: false
+          });
+      }
+
+      // Validate file size (5MB limit)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (image.size > maxSize) {
+          return response.status(400).json({
+              message: "File size too large. Maximum size is 5MB.",
+              error: true,
+              success: false
+          });
+      }
+
+      console.log('Uploading to Cloudinary...');
       const upload = await uploadImageClodinary(image)
       
-      const updateUser = await UserModel.findByIdAndUpdate(userId,{
-          avatar : upload.url
-      })
+      if (!upload || !upload.secure_url) {
+          throw new Error('Failed to upload image to cloud storage');
+      }
+
+      console.log('Cloudinary upload successful, updating user avatar...');
+      
+      const updateUser = await UserModel.findByIdAndUpdate(
+          userId,
+          { avatar: upload.secure_url },
+          { new: true }
+      );
+
+      if (!updateUser) {
+          throw new Error('Failed to update user avatar in database');
+      }
+
+      console.log('Avatar updated successfully for user:', userId);
 
       return response.json({
-          message : "upload profile",
+          message : "Profile photo uploaded successfully",
           success : true,
           error : false,
           data : {
               _id : userId,
-              avatar : upload.url
+              avatar : upload.secure_url
           }
       })
 
   } catch (error) {
+      console.error('Upload avatar error:', {
+          message: error.message,
+          name: error.name,
+          code: error.code,
+          http_code: error.http_code,
+          stack: error.stack
+      });
+      
       Logger.error('Upload avatar error', { error: error.message });
+      
+      // Return specific error message
+      let errorMessage = 'Failed to upload avatar';
+      
+      if (error.message?.includes('Cloudinary')) {
+          errorMessage = 'Image upload service error. Please try again.';
+      } else if (error.message?.includes('timeout') || error.message?.includes('Timeout')) {
+          errorMessage = 'Upload timed out. Please try with a smaller image or check your internet connection.';
+      } else if (error.http_code === 499) {
+          errorMessage = 'Request timed out. Please try again with a smaller image.';
+      }
+      
       return response.status(500).json({
-          message : error.message || error,
-          error : true,
-          success : false
+          message: errorMessage,
+          error: true,
+          success: false
       })
   }
 }

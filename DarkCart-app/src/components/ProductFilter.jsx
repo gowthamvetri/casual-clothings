@@ -81,8 +81,7 @@ const ProductFilter = ({ filters, onFilterChange, showGenderFilter = true, initi
                             <button
                                 key={range.label}
                                 onClick={() => {
-                                    onFilterChange('minPrice', range.min);
-                                    onFilterChange('maxPrice', range.max);
+                                    onFilterChange('priceRange', range.min, range.max);
                                 }}
                                 className={`px-3 py-2 text-xs rounded-lg border transition-all duration-200 ${
                                     filters.minPrice === range.min && filters.maxPrice === range.max

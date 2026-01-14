@@ -26,7 +26,7 @@ export const setupAxiosInterceptors = () => {
       return config;
     },
     (error) => {
-      console.error("Axios request interceptor error:", error);
+
       return Promise.reject(error);
     }
   );

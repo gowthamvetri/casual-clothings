@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 import { DisplayPriceInRupees } from '../utils/DisplayPriceInRupees';
@@ -150,17 +150,23 @@ const BagPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   
-  // Calculate totals for selected items only
-  const selectedCartItems = cartItemsList.filter(item => selectedItems.includes(item._id));
+  // Memoize selected cart items to avoid filtering on every render
+  const selectedCartItems = useMemo(() => 
+    cartItemsList.filter(item => selectedItems.includes(item._id)),
+    [cartItemsList, selectedItems]
+  );
   
-  const selectedTotals = selectedCartItems.reduce((totals, item) => {
-    const pricing = calculateItemPricing(item);
-    return {
-      totalQty: totals.totalQty + pricing.quantity,
-      totalPrice: totals.totalPrice + pricing.totalPrice,
-      totalOriginalPrice: totals.totalOriginalPrice + pricing.totalOriginalPrice
-    };
-  }, { totalQty: 0, totalPrice: 0, totalOriginalPrice: 0 });
+  // Memoize cart totals calculation - expensive operation
+  const selectedTotals = useMemo(() => {
+    return selectedCartItems.reduce((totals, item) => {
+      const pricing = calculateItemPricing(item);
+      return {
+        totalQty: totals.totalQty + pricing.quantity,
+        totalPrice: totals.totalPrice + pricing.totalPrice,
+        totalOriginalPrice: totals.totalOriginalPrice + pricing.totalOriginalPrice
+      };
+    }, { totalQty: 0, totalPrice: 0, totalOriginalPrice: 0 });
+  }, [selectedCartItems]);
 
   // Function to check if an item is available for purchase
   const isItemAvailable = (item) => {
@@ -446,12 +452,12 @@ const BagPage = () => {
     }
   };
 
-  const handleRemoveItem = async (item) => {
+  // Memoize remove handler to prevent recreating on every render
+  const handleRemoveItem = useCallback(async (item) => {
     const itemId = item._id;
     
     if (!itemId) {
       toast.error("Item ID not found");
-      console.error("Item ID not found in:", item);
       return;
     }
     
@@ -461,16 +467,16 @@ const BagPage = () => {
     } else {
       toast.error("Failed to remove item");
     }
-  };
+  }, []);
 
-  const handleProceedToCheckout = async () => {
+  // Memoize checkout handler to prevent recreating on every render
+  const handleProceedToCheckout = useCallback(async () => {
     if (selectedItems.length === 0) {
       toast.error("Please select at least one item to checkout");
       return;
     }
     
     try {
-      // Validate if all selected cart items are still available for purchase
       const response = await Axios({
         ...SummaryApi.validateCartItems,
         data: {
@@ -479,12 +485,8 @@ const BagPage = () => {
       });
       
       if (response.data.success) {
-        // If validation passes, proceed to checkout
-        
-        // Store the selected cart item IDs
         sessionStorage.setItem('selectedCartItems', JSON.stringify(selectedItems));
         
-        // Store the full cart items data with complete pricing information
         const selectedCartItemsData = cartItemsList.filter(item => 
           selectedItems.includes(item._id)
         );
@@ -492,10 +494,7 @@ const BagPage = () => {
         
         navigate('/checkout/address');
       } else {
-        // If validation fails, show error message
         toast.error(response.data.message || "Some items in your cart are unavailable for purchase");
-        
-        // Refresh cart to update availability
         fetchCartItems();
       }
     } catch (error) {
@@ -554,7 +553,7 @@ const BagPage = () => {
       // Refresh cart to update availability
       fetchCartItems();
     }
-  };
+  }, [selectedItems, cartItemsList, navigate, fetchCartItems, dispatch]);
 
   const handleSelectAll = () => {
     if (selectedItems.length === cartItemsList.length) {

@@ -4,6 +4,7 @@ import UserModel from "../models/users.model.js";
 export const addAddressController = async (req, res) => {
     try {
         const userId = req.userId; // Assuming user ID is stored in req.user
+        
         // Validate request body
         const { address_line, city, state, pincode, country, mobile, addIframe } = req.body;
 
@@ -37,7 +38,12 @@ export const addAddressController = async (req, res) => {
         });
 
     } catch (error) {
-        res.status(500).json({ message: "Error adding address", error:true,success:false });
+        return res.status(500).json({ 
+            message: "Error adding address", 
+            error: true,
+            success: false,
+            details: error.message 
+        });
     }
 };
 
@@ -54,7 +60,12 @@ export const getAddressController = async (req, res) => {
             data: addresses,
         });
     } catch (error) {
-        res.status(500).json({ message: "Error fetching addresses", error:true,success:false });
+        return res.status(500).json({ 
+            message: "Error fetching addresses", 
+            error: true,
+            success: false,
+            details: error.message 
+        });
     }
 };
 
@@ -76,7 +87,13 @@ export const editAddressController = async (req, res) => {
             data: updatedAddress,
         });
     } catch (error) {
-        res.status(500).json({ message: "Error updating address", error:true,success:false });
+
+        return res.status(500).json({ 
+            message: "Error updating address", 
+            error: true,
+            success: false,
+            details: error.message 
+        });
     }
 }
 
@@ -98,7 +115,12 @@ export const deleteAddressController = async (req, res) => {
             data: disabledAddress,
         });
     } catch (error) {
-        res.status(500).json({ message: "Error deleting address", error:true,success:false });
+        return res.status(500).json({ 
+            message: "Error deleting address", 
+            error: true,
+            success: false,
+            details: error.message 
+        });
     }
 };
 
